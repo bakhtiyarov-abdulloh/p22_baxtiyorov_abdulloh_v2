@@ -1,38 +1,38 @@
 from uuid import uuid4
 
-from aiogram import Router, F, Bot
+from aiogram import Router, F
 from aiogram.enums import ChatType
-from aiogram.filters import CommandStart, Command
-from aiogram.fsm.context import FSMContext
+from aiogram.filters import Command
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import Message, message
+from aiogram.types import Message
 
 from config import db
 
 main_router = Router()
 
-save_user = {}
-class Msg(StatesGroup):
-    user_id = State()
-    msg = State()
+
+def write_db(message, username):
+    messages_ = db["msg"]
+    messages_.append(message)
+    db["msg"] = messages_
+    users = db['users']
+    if not users.get(username):
+        users[username] = []
+    users[username].append(message)
+    db['users'] = users
+
 
 @main_router.message(Command(commands='msg'))
-async def msg(message: Message, bot:Bot):
-    await message.answer(text=db['user_id'].item())
-
+async def message(message: Message):
+    msg = f'gruppada yozilgan xabarlar soni: {len(db['msg'])}'
+    await message.answer(msg)
+    if message.chat.type in (ChatType.GROUP, ChatType.SUPERGROUP):
+        write_db(message.text, message.from_user.username)
+        write_db(msg, 'p22_baxtiyorov_abdulloh_2_bot)')
 
 @main_router.message(F.chat.type.in_({ChatType.GROUP, ChatType.SUPERGROUP}))
-async def user_message(message: Message, bot:Bot):
-    # if message.from_user.id
-    user_id = db.get('user_id',{})
-    user_id[str(uuid4())] = message.from_user.id
-    db['user_id'] = user_id
-    await message.answer(text=db)
-
-# @admin_router.message(FormState.category)
-# async def add_category(message: Message, state: FSMContext):
-#     category = db['categories']
-#     category[str(uuid4())] = message.text
-#     db['categories'] = category
-#     await state.clear()
-#     await message.answer('Category qoshildi', reply_markup=kb.admin_panel_keyboard)
+async def user_message(message: Message):
+    msg = message.text.split(' @')
+    if len(msg) == 2 and msg[0] == 'user msg' and db['users'].get(msg[1]):
+        msg = f'@{msg[1]} ga tegishli xabarlar soni {len(db["users"][msg[-1]])}'
+        await message.answer(text=msg)
