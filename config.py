@@ -6,3 +6,4 @@ load_dotenv('.env')
 TOKEN = os.getenv('BOT_TOKEN')
 db = RedisDict('books')
 print(db)
+
